@@ -1,0 +1,161 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Deep ocean theme - dark mode by default */
+  --background: #0a0f1e;
+  --foreground: #e8f4f8;
+  --card: #0d1428;
+  --card-foreground: #e8f4f8;
+  --popover: #0d1428;
+  --popover-foreground: #e8f4f8;
+  --primary: #00d4d8;
+  --primary-foreground: #0a0f1e;
+  --secondary: #1a2744;
+  --secondary-foreground: #e8f4f8;
+  --muted: #152035;
+  --muted-foreground: #7a9bb3;
+  --accent: #00d4d8;
+  --accent-foreground: #0a0f1e;
+  --destructive: #ff6b6b;
+  --destructive-foreground: #ffffff;
+  --border: #1e3a5f;
+  --input: #1e3a5f;
+  --ring: #00d4d8;
+  --chart-1: #00d4d8;
+  --chart-2: #00a0b0;
+  --chart-3: #006b77;
+  --chart-4: #38bdf8;
+  --chart-5: #0ea5e9;
+  --radius: 0.75rem;
+  
+  /* Custom ocean colors */
+  --ocean-glow: #00d4d8;
+  --ocean-deep: #0a0f1e;
+  --ocean-surface: #1a2744;
+  --ocean-light: #38bdf8;
+}
+
+@theme inline {
+  --font-sans: 'DM Sans', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-ocean-glow: var(--ocean-glow);
+  --color-ocean-deep: var(--ocean-deep);
+  --color-ocean-surface: var(--ocean-surface);
+  --color-ocean-light: var(--ocean-light);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Bubble animation */
+@keyframes bubble-rise {
+  0% {
+    transform: translateY(100vh) scale(0.5);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-10vh) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes bubble-wobble {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(20px);
+  }
+}
+
+.bubble {
+  animation: bubble-rise linear infinite, bubble-wobble ease-in-out infinite;
+}
+
+/* Card glow effect */
+.card-glow {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.card-glow:hover {
+  box-shadow: 0 0 30px rgba(0, 212, 216, 0.15), 0 0 60px rgba(0, 212, 216, 0.05);
+  border-color: rgba(0, 212, 216, 0.5);
+}
+
+/* Star rating styles */
+.star-rating {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.star {
+  cursor: pointer;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.star:hover {
+  transform: scale(1.1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ocean-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ocean-surface);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border);
+}

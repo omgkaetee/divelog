@@ -1,0 +1,257 @@
+'use client'
+
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import type { DiveEntry, UnitPreferences } from '@/lib/types'
+import { formatDepth, formatTemp } from '@/lib/types'
+import {
+  ArrowLeft,
+  MapPin,
+  Calendar,
+  ArrowDown,
+  Clock,
+  Eye,
+  Thermometer,
+  Users,
+  Fish,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+} from 'lucide-react'
+
+interface DiveDetailProps {
+  dive: DiveEntry
+  units: UnitPreferences
+  onBack: () => void
+  onDelete: () => void
+  onEdit: () => void
+}
+
+export function DiveDetail({ dive, units, onBack, onDelete, onEdit }: DiveDetailProps) {
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
+
+  const formattedDate = new Date(dive.date).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+
+  const handlePrevPhoto = () => {
+    if (selectedPhotoIndex !== null && selectedPhotoIndex > 0) {
+      setSelectedPhotoIndex(selectedPhotoIndex - 1)
+    }
+  }
+
+  const handleNextPhoto = () => {
+    if (selectedPhotoIndex !== null && selectedPhotoIndex < dive.photos.length - 1) {
+      setSelectedPhotoIndex(selectedPhotoIndex + 1)
+    }
+  }
+
+  return (
+    <>
+      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="size-5" />
+              </Button>
+              <CardTitle className="font-serif text-xl">{dive.siteName}</CardTitle>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onEdit}
+                className="text-muted-foreground hover:text-primary"
+              >
+                <Pencil className="size-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onDelete}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="size-5" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Photo Gallery */}
+          {dive.photos.length > 0 && (
+            <div className="space-y-3">
+              <div
+                className="aspect-video w-full rounded-lg overflow-hidden cursor-pointer"
+                onClick={() => setSelectedPhotoIndex(0)}
+              >
+                <img
+                  src={dive.photos[0]}
+                  alt={dive.siteName}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {dive.photos.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {dive.photos.map((photo, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedPhotoIndex(index)}
+                      className="flex-shrink-0 size-16 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors"
+                    >
+                      <img
+                        src={photo}
+                        alt={`Photo ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Location */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MapPin className="size-4" />
+              <span>{dive.location || 'Unknown location'}</span>
+            </div>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Calendar className="size-4" />
+              <span>{formattedDate}</span>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard
+              icon={<ArrowDown className="size-5" />}
+              label="Max Depth"
+              value={formatDepth(dive.maxDepth, units.depth)}
+            />
+            <StatCard
+              icon={<Clock className="size-5" />}
+              label="Duration"
+              value={`${dive.duration} min`}
+            />
+            <StatCard
+              icon={<Eye className="size-5" />}
+              label="Visibility"
+              value={formatDepth(dive.visibility, units.depth)}
+            />
+            <StatCard
+              icon={<Thermometer className="size-5" />}
+              label="Water Temp"
+              value={formatTemp(dive.waterTemp, units.temperature)}
+            />
+          </div>
+
+          {/* Buddy */}
+          {dive.buddyName && (
+            <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+              <Users className="size-5 text-primary" />
+              <div>
+                <p className="text-sm text-muted-foreground">Dive Buddy</p>
+                <p className="font-medium">{dive.buddyName}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Marine Life */}
+          {dive.marineLife.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Fish className="size-4" />
+                <span className="text-sm font-medium">Marine Life Spotted</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {dive.marineLife.map((species) => (
+                  <Badge
+                    key={species}
+                    variant="secondary"
+                    className="bg-primary/20 text-primary border-primary/30"
+                  >
+                    {species}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {dive.notes && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Dive Notes</p>
+              <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                {dive.notes}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Photo Lightbox */}
+      <Dialog open={selectedPhotoIndex !== null} onOpenChange={() => setSelectedPhotoIndex(null)}>
+        <DialogContent className="max-w-4xl bg-background/95 backdrop-blur-md border-border/50 p-2">
+          {selectedPhotoIndex !== null && (
+            <div className="relative">
+              <img
+                src={dive.photos[selectedPhotoIndex]}
+                alt={`Photo ${selectedPhotoIndex + 1}`}
+                className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+              />
+              {dive.photos.length > 1 && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePrevPhoto}
+                    disabled={selectedPhotoIndex === 0}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80"
+                  >
+                    <ChevronLeft className="size-6" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNextPhoto}
+                    disabled={selectedPhotoIndex === dive.photos.length - 1}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80"
+                  >
+                    <ChevronRight className="size-6" />
+                  </Button>
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/50 px-3 py-1 rounded-full text-sm">
+                    {selectedPhotoIndex + 1} / {dive.photos.length}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="p-4 bg-secondary/30 rounded-lg text-center">
+      <div className="text-primary flex justify-center mb-2">{icon}</div>
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className="font-semibold text-foreground">{value}</p>
+    </div>
+  )
+}
