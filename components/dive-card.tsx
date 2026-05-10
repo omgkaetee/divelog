@@ -1,17 +1,17 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import type { DiveEntry, UnitPreferences } from '@/lib/types'
-import { formatDepth } from '@/lib/types'
-import { MapPin, Clock, ArrowDown, Calendar } from 'lucide-react'
+import type { DiveEntry } from '@/lib/types'
+import { formatDepthBoth } from '@/lib/types'
+import { MapPin, Clock, ArrowDown, Calendar, Icon } from 'lucide-react'
+import { maskSnorkel } from '@lucide/lab'
 
 interface DiveCardProps {
   dive: DiveEntry
-  units: UnitPreferences
   onClick: () => void
 }
 
-export function DiveCard({ dive, units, onClick }: DiveCardProps) {
+export function DiveCard({ dive, onClick }: DiveCardProps) {
   const formattedDate = new Date(dive.date).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -36,7 +36,7 @@ export function DiveCard({ dive, units, onClick }: DiveCardProps) {
             </div>
           ) : (
             <div className="flex-shrink-0 size-20 bg-secondary/50 rounded-lg border border-border/50 flex items-center justify-center">
-              <ArrowDown className="size-8 text-primary/40" />
+              <Icon iconNode={maskSnorkel} className="size-8 text-primary/40" />
             </div>
           )}
 
@@ -58,7 +58,7 @@ export function DiveCard({ dive, units, onClick }: DiveCardProps) {
               </div>
               <div className="flex items-center gap-1.5 text-primary">
                 <ArrowDown className="size-3.5" />
-                <span className="font-medium">{formatDepth(dive.maxDepth, units.depth)}</span>
+                <span className="font-medium">{formatDepthBoth(dive.maxDepth)}</span>
               </div>
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Clock className="size-3.5" />

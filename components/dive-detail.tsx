@@ -5,11 +5,22 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import type { DiveEntry, UnitPreferences } from '@/lib/types'
-import { formatDepth, formatTemp } from '@/lib/types'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import type { DiveEntry } from '@/lib/types'
+import { formatDepthBoth, formatTempBoth } from '@/lib/types'
 import {
   ArrowLeft,
   MapPin,
+  Map,
   Calendar,
   ArrowDown,
   Clock,
@@ -25,14 +36,14 @@ import {
 
 interface DiveDetailProps {
   dive: DiveEntry
-  units: UnitPreferences
   onBack: () => void
   onDelete: () => void
   onEdit: () => void
 }
 
-export function DiveDetail({ dive, units, onBack, onDelete, onEdit }: DiveDetailProps) {
+export function DiveDetail({ dive, onBack, onDelete, onEdit }: DiveDetailProps) {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const formattedDate = new Date(dive.date).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -81,11 +92,31 @@ export function DiveDetail({ dive, units, onBack, onDelete, onEdit }: DiveDetail
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="size-5" />
               </Button>
+
+              <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this dive?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently remove "{dive.siteName}" from your dive log. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={onDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </CardHeader>
@@ -140,7 +171,7 @@ export function DiveDetail({ dive, units, onBack, onDelete, onEdit }: DiveDetail
             <StatCard
               icon={<ArrowDown className="size-5" />}
               label="Max Depth"
-              value={formatDepth(dive.maxDepth, units.depth)}
+              value={formatDepthBoth(dive.maxDepth)}
             />
             <StatCard
               icon={<Clock className="size-5" />}
@@ -150,14 +181,39 @@ export function DiveDetail({ dive, units, onBack, onDelete, onEdit }: DiveDetail
             <StatCard
               icon={<Eye className="size-5" />}
               label="Visibility"
-              value={formatDepth(dive.visibility, units.depth)}
+              value={formatDepthBoth(dive.visibility)}
             />
             <StatCard
               icon={<Thermometer className="size-5" />}
               label="Water Temp"
-              value={formatTemp(dive.waterTemp, units.temperature)}
+              value={formatTempBoth(dive.waterTemp)}
             />
           </div>
+
+          {/* Location Map */}
+          {dive.location && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Map className="size-4" />
+                <span className="text-sm font-medium">Location</span>
+              </div>
+              <iframe
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(dive.location)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+                className="w-full aspect-video rounded-lg border-0"
+                loading="lazy"
+                title={`Map of ${dive.location}`}
+              />
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dive.location)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline"
+              >
+                Open in Google Maps
+              </a>
+              <p className="text-sm text-muted-foreground">{dive.location}</p>
+            </div>
+          )}
 
           {/* Buddy */}
           {dive.buddyName && (
@@ -178,13 +234,20 @@ export function DiveDetail({ dive, units, onBack, onDelete, onEdit }: DiveDetail
                 <span className="text-sm font-medium">Marine Life Spotted</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {dive.marineLife.map((species) => (
+                {dive.marineLife.map((species, index) => (
                   <Badge
-                    key={species}
+                    key={index}
                     variant="secondary"
-                    className="bg-primary/20 text-primary border-primary/30"
+                    className="bg-primary/20 text-primary border-primary/30 flex items-center gap-1.5"
                   >
-                    {species}
+                    {species.imageUrl && (
+                      <img
+                        src={species.imageUrl}
+                        alt={species.name}
+                        className="w-5 h-5 rounded object-cover"
+                      />
+                    )}
+                    <span>{species.name}</span>
                   </Badge>
                 ))}
               </div>

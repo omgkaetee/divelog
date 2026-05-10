@@ -1,3 +1,11 @@
+export interface MarineLifeEntry {
+  id?: string
+  name: string
+  scientificName?: string
+  imageUrl?: string
+  custom?: boolean
+}
+
 export interface DiveEntry {
   id: string
   siteName: string
@@ -8,7 +16,7 @@ export interface DiveEntry {
   visibility: number // stored in meters
   waterTemp: number // stored in celsius
   buddyName: string
-  marineLife: string[]
+  marineLife: MarineLifeEntry[]
   notes: string
   photos: string[] // base64 encoded images
   createdAt: string
@@ -36,10 +44,20 @@ export function convertTemp(value: number, from: 'celsius' | 'fahrenheit', to: '
 
 export function formatDepth(meters: number, unit: 'meters' | 'feet'): string {
   const value = unit === 'meters' ? meters : meters * METERS_TO_FEET
-  return `${Math.round(value)} ${unit === 'meters' ? 'm' : 'ft'}`
+  return `${value.toFixed(2)} ${unit === 'meters' ? 'm' : 'ft'}`
+}
+
+export function formatDepthBoth(meters: number): string {
+  const feet = meters * METERS_TO_FEET
+  return `${meters.toFixed(2)}m / ${feet.toFixed(2)}ft`
 }
 
 export function formatTemp(celsius: number, unit: 'celsius' | 'fahrenheit'): string {
   const value = unit === 'celsius' ? celsius : CELSIUS_TO_FAHRENHEIT(celsius)
-  return `${Math.round(value)}°${unit === 'celsius' ? 'C' : 'F'}`
+  return `${value.toFixed(2)}°${unit === 'celsius' ? 'C' : 'F'}`
+}
+
+export function formatTempBoth(celsius: number): string {
+  const fahrenheit = CELSIUS_TO_FAHRENHEIT(celsius)
+  return `${celsius.toFixed(2)}°C / ${fahrenheit.toFixed(2)}°F`
 }

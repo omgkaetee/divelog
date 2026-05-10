@@ -1,78 +1,78 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import type { DiveEntry, UnitPreferences } from '@/lib/types'
-
-const DIVES_KEY = 'deeplog_dives'
-const UNITS_KEY = 'deeplog_units'
+import { useCallback } from 'react'
+import { useQuery, useMutation } from 'convex/react'
+import { api } from '@/convex/_generated/api'
+import { Id } from '@/convex/_generated/dataModel'
+import type { DiveEntry } from '@/lib/types'
 
 export function useDiveStorage() {
-  const [dives, setDives] = useState<DiveEntry[]>([])
-  const [units, setUnits] = useState<UnitPreferences>({
-    depth: 'meters',
-    temperature: 'celsius',
-  })
-  const [isLoaded, setIsLoaded] = useState(false)
+  const rawDives = useQuery(api.dives.list)
+  const dives: DiveEntry[] = rawDives?.map((d) => ({
+    id: d._id,
+    siteName: d.siteName,
+    date: d.date,
+    location: d.location,
+    maxDepth: d.maxDepth,
+    duration: d.duration,
+    visibility: d.visibility,
+    waterTemp: d.waterTemp,
+    buddyName: d.buddyName,
+    marineLife: d.marineLife,
+    notes: d.notes,
+    photos: d.photos,
+    createdAt: d.createdAt,
+  })) || []
+  
+  const createDiveMutation = useMutation(api.dives.create)
+  const updateDiveMutation = useMutation(api.dives.update)
+  const deleteDiveMutation = useMutation(api.dives.remove)
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const storedDives = localStorage.getItem(DIVES_KEY)
-    const storedUnits = localStorage.getItem(UNITS_KEY)
+  const addDive = useCallback(async (dive: Omit<DiveEntry, 'id' | 'createdAt'>) => {
+    const createdAt = new Date().toISOString()
+    const id = await createDiveMutation({
+      siteName: dive.siteName,
+      date: dive.date,
+      location: dive.location,
+      maxDepth: dive.maxDepth,
+      duration: dive.duration,
+      visibility: dive.visibility,
+      waterTemp: dive.waterTemp,
+      buddyName: dive.buddyName,
+      marineLife: dive.marineLife,
+      notes: dive.notes,
+      photos: dive.photos,
+      createdAt,
+    })
+    return { ...dive, id, createdAt } as DiveEntry
+  }, [createDiveMutation])
 
-    if (storedDives) {
-      try {
-        setDives(JSON.parse(storedDives))
-      } catch (e) {
-        console.error('Failed to parse dives from localStorage', e)
-      }
-    }
+  const updateDiveEntry = useCallback(async (id: string, updates: Partial<DiveEntry>) => {
+    const existing = dives.find(d => d.id === id)
+    if (!existing) return
+    await updateDiveMutation({
+      id: id as Id<"dives">,
+      siteName: updates.siteName ?? existing.siteName,
+      date: updates.date ?? existing.date,
+      location: updates.location ?? existing.location,
+      maxDepth: updates.maxDepth ?? existing.maxDepth,
+      duration: updates.duration ?? existing.duration,
+      visibility: updates.visibility ?? existing.visibility,
+      waterTemp: updates.waterTemp ?? existing.waterTemp,
+      buddyName: updates.buddyName ?? existing.buddyName,
+      marineLife: updates.marineLife ?? existing.marineLife,
+      notes: updates.notes ?? existing.notes,
+      photos: updates.photos ?? existing.photos,
+      createdAt: updates.createdAt ?? existing.createdAt,
+    })
+  }, [dives, updateDiveMutation])
 
-    if (storedUnits) {
-      try {
-        setUnits(JSON.parse(storedUnits))
-      } catch (e) {
-        console.error('Failed to parse units from localStorage', e)
-      }
-    }
-
-    setIsLoaded(true)
-  }, [])
-
-  // Save dives to localStorage
-  const saveDives = useCallback((newDives: DiveEntry[]) => {
-    setDives(newDives)
-    localStorage.setItem(DIVES_KEY, JSON.stringify(newDives))
-  }, [])
-
-  // Save units to localStorage
-  const saveUnits = useCallback((newUnits: UnitPreferences) => {
-    setUnits(newUnits)
-    localStorage.setItem(UNITS_KEY, JSON.stringify(newUnits))
-  }, [])
-
-  const addDive = useCallback((dive: Omit<DiveEntry, 'id' | 'createdAt'>) => {
-    const newDive: DiveEntry = {
-      ...dive,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    }
-    saveDives([newDive, ...dives])
-    return newDive
-  }, [dives, saveDives])
-
-  const updateDive = useCallback((id: string, updates: Partial<DiveEntry>) => {
-    const newDives = dives.map((dive) =>
-      dive.id === id ? { ...dive, ...updates } : dive
-    )
-    saveDives(newDives)
-  }, [dives, saveDives])
-
-  const deleteDive = useCallback((id: string) => {
-    saveDives(dives.filter((dive) => dive.id !== id))
-  }, [dives, saveDives])
+  const deleteDiveEntry = useCallback(async (id: string) => {
+    await deleteDiveMutation({ id: id as Id<"dives"> })
+  }, [deleteDiveMutation])
 
   const getDive = useCallback((id: string) => {
-    return dives.find((dive) => dive.id === id)
+    return dives.find(d => d.id === id)
   }, [dives])
 
   const totalDives = dives.length
@@ -80,13 +80,11 @@ export function useDiveStorage() {
 
   return {
     dives,
-    units,
-    isLoaded,
+    isLoaded: true,
     addDive,
-    updateDive,
-    deleteDive,
+    updateDive: updateDiveEntry,
+    deleteDive: deleteDiveEntry,
     getDive,
-    saveUnits,
     totalDives,
     totalBottomTime,
   }
