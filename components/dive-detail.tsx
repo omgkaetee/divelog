@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import {
@@ -32,6 +33,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Pencil,
+  Hash,
+  Check,
 } from 'lucide-react'
 
 interface DiveDetailProps {
@@ -39,11 +42,14 @@ interface DiveDetailProps {
   onBack: () => void
   onDelete: () => void
   onEdit: () => void
+  onUpdateCountry?: (country: string) => void
 }
 
-export function DiveDetail({ dive, onBack, onDelete, onEdit }: DiveDetailProps) {
+export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry }: DiveDetailProps) {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isEditingCountry, setIsEditingCountry] = useState(false)
+  const [editCountry, setEditCountry] = useState(dive.country)
 
   const formattedDate = new Date(dive.date).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -178,16 +184,69 @@ export function DiveDetail({ dive, onBack, onDelete, onEdit }: DiveDetailProps) 
               label="Duration"
               value={`${dive.duration} min`}
             />
-            <StatCard
-              icon={<Eye className="size-5" />}
-              label="Visibility"
-              value={formatDepthBoth(dive.visibility)}
-            />
+            {dive.dayNumber && (
+              <StatCard
+                icon={<Hash className="size-5" />}
+                label="Day"
+                value={`Day ${dive.dayNumber}`}
+              />
+            )}
             <StatCard
               icon={<Thermometer className="size-5" />}
               label="Water Temp"
               value={formatTempBoth(dive.waterTemp)}
             />
+            {dive.country && (
+              <StatCard
+                icon={<MapPin className="size-5" />}
+                label="Country"
+                value={
+                  isEditingCountry ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editCountry}
+                        onChange={(e) => setEditCountry(e.target.value)}
+                        className="h-6 text-sm"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && onUpdateCountry) {
+                            onUpdateCountry(editCountry)
+                            setIsEditingCountry(false)
+                          }
+                          if (e.key === 'Escape') {
+                            setEditCountry(dive.country)
+                            setIsEditingCountry(false)
+                          }
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-1"
+                        onClick={() => {
+                          if (onUpdateCountry) {
+                            onUpdateCountry(editCountry)
+                            setIsEditingCountry(false)
+                          }
+                        }}
+                      >
+                        <Check className="size-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <span 
+                      className="cursor-pointer hover:text-primary"
+                      onClick={() => {
+                        setEditCountry(dive.country)
+                        setIsEditingCountry(true)
+                      }}
+                    >
+                      {dive.country}
+                    </span>
+                  )
+                }
+              />
+            )}
           </div>
 
           {/* Location Map */}
@@ -197,21 +256,30 @@ export function DiveDetail({ dive, onBack, onDelete, onEdit }: DiveDetailProps) 
                 <Map className="size-4" />
                 <span className="text-sm font-medium">Location</span>
               </div>
-              <iframe
-                src={`https://maps.google.com/maps?q=${encodeURIComponent(dive.location)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
-                className="w-full aspect-video rounded-lg border-0"
-                loading="lazy"
-                title={`Map of ${dive.location}`}
-              />
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dive.location)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline"
-              >
-                Open in Google Maps
-              </a>
-              <p className="text-sm text-muted-foreground">{dive.location}</p>
+              {(() => {
+                const mapQuery = dive.country && dive.location 
+                  ? `${dive.location}, ${dive.country}` 
+                  : dive.country || dive.location || ''
+                return (
+                  <>
+                    <iframe
+                      src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+                      className="w-full aspect-video rounded-lg border-0"
+                      loading="lazy"
+                      title={`Map of ${mapQuery}`}
+                    />
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Open in Google Maps
+                    </a>
+                    <p className="text-sm text-muted-foreground">{mapQuery}</p>
+                  </>
+                )
+              })()}
             </div>
           )}
 

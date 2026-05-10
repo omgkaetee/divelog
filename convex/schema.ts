@@ -3,12 +3,13 @@ import { v } from "convex/values";
 
 export default defineSchema({
   dives: defineTable({
+    country: v.optional(v.string()),
     siteName: v.string(),
     date: v.string(),
+    dayNumber: v.optional(v.number()),
     location: v.string(),
     maxDepth: v.number(),
     duration: v.number(),
-    visibility: v.number(),
     waterTemp: v.number(),
     buddyName: v.string(),
     marineLife: v.array(
@@ -23,6 +24,7 @@ export default defineSchema({
     notes: v.string(),
     photos: v.array(v.string()),
     createdAt: v.string(),
+    visibility: v.optional(v.number()), // Legacy field - will be removed
   }).index("by_date", ["date"]),
   
   settings: defineTable({

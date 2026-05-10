@@ -5,6 +5,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { Logo } from '@/components/logo'
 import { BubbleBackground } from '@/components/bubble-background'
 import { DiveForm } from '@/components/dive-form'
@@ -12,7 +20,8 @@ import { DiveCard } from '@/components/dive-card'
 import { DiveDetail } from '@/components/dive-detail'
 import { useDiveStorage } from '@/hooks/use-dive-storage'
 import type { DiveEntry } from '@/lib/types'
-import { Plus, Waves, Clock, Hash, Search, SlidersHorizontal, X, List, FolderOpen, ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react'
+import { importDives } from '@/lib/import-dives'
+import { Plus, Waves, Clock, Hash, Search, SlidersHorizontal, X, List, FolderOpen, ChevronDown, ChevronRight, ChevronLeft, Upload, Trash2, CheckSquare, Square, Check } from 'lucide-react'
 
 type View = 'list' | 'form' | 'detail' | 'edit' | 'country'
 type SortOption = 'newest' | 'oldest' | 'deepest' | 'longest'
@@ -41,6 +50,12 @@ export function DiveLog() {
   const [listViewMode, setListViewMode] = useState<ListViewMode>('folder')
   const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set())
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importPreview, setImportPreview] = useState<DiveEntry[] | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [deleteCountryConfirm, setDeleteCountryConfirm] = useState<string | null>(null)
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [selectedDives, setSelectedDives] = useState<Set<string>>(new Set())
 
   const handleAddDive = (dive: Omit<DiveEntry, 'id' | 'createdAt'>) => {
     addDive(dive)
@@ -64,6 +79,93 @@ export function DiveLog() {
       deleteDive(selectedDiveId)
       setSelectedDiveId(null)
       setView('list')
+    }
+  }
+
+  const handleDeleteCountry = (country: string) => {
+    const countryDives = filteredDives.filter(dive => {
+      const locationParts = dive.location.split(',')
+      const diveCountry = locationParts[locationParts.length - 1]?.trim() || dive.country || 'Unknown'
+      return diveCountry === country
+    })
+    countryDives.forEach(dive => deleteDive(dive.id))
+    setDeleteCountryConfirm(null)
+    setSelectedCountry(null)
+    setView('list')
+  }
+
+  const toggleSelectDive = (id: string) => {
+    setSelectedDives(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleBulkDelete = () => {
+    selectedDives.forEach(id => deleteDive(id))
+    setSelectedDives(new Set())
+    setIsSelectionMode(false)
+  }
+
+  const selectAll = () => {
+    if (selectedDives.size === filteredDives.length) {
+      setSelectedDives(new Set())
+    } else {
+      setSelectedDives(new Set(filteredDives.map(d => d.id)))
+    }
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    setIsImporting(true)
+    try {
+      const imported = await importDives(file)
+      setImportPreview(imported)
+    } catch (error) {
+      console.error('Import failed:', error)
+      alert('Failed to import file. Please check the format.')
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleConfirmImport = () => {
+    if (importPreview) {
+      importPreview.forEach(dive => {
+        addDive(dive)
+      })
+      setImportPreview(null)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+    
+    setIsImporting(true)
+    try {
+      const imported = await importDives(file)
+      setImportPreview(imported)
+    } catch (error) {
+      console.error('Import failed:', error)
+      alert('Failed to import file. Please check the format.')
+    } finally {
+      setIsImporting(false)
     }
   }
 
@@ -210,6 +312,38 @@ export function DiveLog() {
               <p className="text-xs text-muted-foreground">Premium Dive Journal</p>
             </div>
           </button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setIsSelectionMode(!isSelectionMode)
+                setSelectedDives(new Set())
+              }}
+              className={isSelectionMode ? 'text-primary' : 'text-muted-foreground'}
+              title="Select multiple"
+            >
+              <CheckSquare className="size-5" />
+            </Button>
+            {isSelectionMode && selectedDives.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDeleteCountryConfirm('selected')}
+              >
+                Delete ({selectedDives.size})
+              </Button>
+            )}
+            <label className="cursor-pointer p-2 rounded-lg hover:bg-secondary/50 transition-colors text-muted-foreground hover:text-foreground">
+              <Upload className="size-5" />
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleImport}
+                className="hidden"
+              />
+            </label>
+          </div>
         </header>
 
         {/* Main Content */}
@@ -386,18 +520,64 @@ export function DiveLog() {
               </div>
             ) : listViewMode === 'folder' && view === 'country' && selectedCountry ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
+<div className="flex items-center gap-2">
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={handleBackToList}
-                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() => setDeleteCountryConfirm(selectedCountry)}
+                    className="ml-auto text-muted-foreground hover:text-destructive"
                   >
-                    <ChevronLeft className="size-5" />
+                    <Trash2 className="size-4" />
                   </Button>
-                  <FolderOpen className="size-5 text-primary" />
-                  <span className="font-medium">{selectedCountry}</span>
-                  <Badge className="bg-primary/20 text-primary text-xs">{groupedByCountry[selectedCountry]?.length || 0}</Badge>
+                </div>
+                {isSelectionMode && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const countryDives = groupedByCountry[selectedCountry] || []
+                        if (selectedDives.size === countryDives.length) {
+                          setSelectedDives(new Set())
+                        } else {
+                          setSelectedDives(new Set(countryDives.map(d => d.id)))
+                        }
+                      }}
+                      className="text-muted-foreground"
+                    >
+                      <span className="flex items-center gap-1">
+                        {selectedDives.size === (groupedByCountry[selectedCountry] || []).length ? <Check className="size-4" /> : <Square className="size-4" />}
+                        Select All ({(groupedByCountry[selectedCountry] || []).length})
+                      </span>
+                    </Button>
+                  </div>
+                )}
+                <div className="space-y-3">
+                  {groupedByCountry[selectedCountry]?.map((dive) => (
+                    <div key={dive.id} className="relative">
+                      {isSelectionMode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleSelectDive(dive.id)
+                          }}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-1"
+                        >
+                          {selectedDives.has(dive.id) ? (
+                            <CheckSquare className="size-5 text-primary" />
+                          ) : (
+                            <Square className="size-5 text-muted-foreground" />
+                          )}
+                        </button>
+                      )}
+                      <div className={isSelectionMode ? 'pl-10' : ''}>
+                        <DiveCard
+                          dive={dive}
+                          onClick={() => handleViewDive(dive.id)}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 <div className="space-y-3">
                   {groupedByCountry[selectedCountry]?.map((dive) => (
@@ -411,12 +591,46 @@ export function DiveLog() {
               </div>
             ) : (
               <div className="space-y-3">
+                {isSelectionMode && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={selectAll}
+                      className="text-muted-foreground"
+                    >
+                      {selectedDives.size === filteredDives.length ? (
+                        <span className="flex items-center gap-1"><Check className="size-4" /> Deselect All</span>
+                      ) : (
+                        <span className="flex items-center gap-1"><Square className="size-4" /> Select All ({filteredDives.length})</span>
+                      )}
+                    </Button>
+                  </div>
+                )}
                 {filteredDives.map((dive) => (
-                  <DiveCard
-                    key={dive.id}
-                    dive={dive}
-                    onClick={() => handleViewDive(dive.id)}
-                  />
+                  <div key={dive.id} className="relative">
+                    {isSelectionMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleSelectDive(dive.id)
+                        }}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-1"
+                      >
+                        {selectedDives.has(dive.id) ? (
+                          <CheckSquare className="size-5 text-primary" />
+                        ) : (
+                          <Square className="size-5 text-muted-foreground" />
+                        )}
+                      </button>
+                    )}
+                    <div className={isSelectionMode ? 'pl-10' : ''}>
+                      <DiveCard
+                        dive={dive}
+                        onClick={() => handleViewDive(dive.id)}
+                      />
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -439,6 +653,14 @@ export function DiveLog() {
             }}
             onDelete={handleDeleteDive}
             onEdit={() => setView('edit')}
+            onUpdateCountry={(country) => {
+              if (selectedDiveId) {
+                updateDive(selectedDiveId, { 
+                  country, 
+                  location: country,
+                })
+              }
+            }}
           />
         )}
 
@@ -449,6 +671,68 @@ export function DiveLog() {
             initialData={selectedDive}
           />
         )}
+
+        {/* Import Preview Dialog */}
+        <Dialog open={!!importPreview} onOpenChange={() => setImportPreview(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>Import Preview</DialogTitle>
+              <DialogDescription>
+                Found {importPreview?.length || 0} dives. Review and confirm import.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="overflow-y-auto max-h-[50vh] space-y-2">
+              {importPreview?.map((dive, index) => (
+                <div key={index} className="p-3 bg-secondary/30 rounded-lg text-sm">
+                  <div className="font-medium">{dive.siteName}</div>
+                  <div className="text-muted-foreground text-xs">
+                    {dive.date} • {dive.location} • {dive.maxDepth}m • {dive.duration}min
+                  </div>
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setImportPreview(null)}>Cancel</Button>
+              <Button onClick={handleConfirmImport}>Import {importPreview?.length || 0} Dives</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Country / Bulk Delete Confirmation */}
+        <Dialog open={!!deleteCountryConfirm} onOpenChange={() => setDeleteCountryConfirm(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {deleteCountryConfirm === 'selected' 
+                  ? `Delete ${selectedDives.size} Selected Dives?`
+                  : `Delete All Dives in ${deleteCountryConfirm}?`
+                }
+              </DialogTitle>
+              <DialogDescription>
+                {deleteCountryConfirm === 'selected'
+                  ? `This will permanently delete ${selectedDives.size} selected dives. This action cannot be undone.`
+                  : `This will permanently delete all ${groupedByCountry[deleteCountryConfirm || '']?.length || 0} dives in this country. This action cannot be undone.`
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteCountryConfirm(null)}>Cancel</Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  if (deleteCountryConfirm === 'selected') {
+                    handleBulkDelete()
+                  } else {
+                    handleDeleteCountry(deleteCountryConfirm)
+                  }
+                  setDeleteCountryConfirm(null)
+                }}
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

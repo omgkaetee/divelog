@@ -8,12 +8,13 @@ export interface MarineLifeEntry {
 
 export interface DiveEntry {
   id: string
+  country: string
   siteName: string
   date: string
+  dayNumber?: number
   location: string
   maxDepth: number // stored in meters
   duration: number // minutes
-  visibility: number // stored in meters
   waterTemp: number // stored in celsius
   buddyName: string
   marineLife: MarineLifeEntry[]
