@@ -33,14 +33,13 @@ function parseMarineLife(value: string | undefined): MarineLifeEntry[] {
 function parseDate(value: string | undefined): string {
   if (!value) return new Date().toISOString().split('T')[0]
   
-  // Handle Excel serial date numbers
-  if (!isNaN(Number(value))) {
-    const excelDate = Number(value)
+  const numValue = Number(value)
+  if (!isNaN(numValue)) {
+    const excelDate = numValue
     const date = new Date((excelDate - 25569) * 86400 * 1000)
     return date.toISOString().split('T')[0]
   }
   
-  // Try parsing as regular date
   const parsed = new Date(value)
   if (!isNaN(parsed.getTime())) {
     return parsed.toISOString().split('T')[0]
@@ -90,37 +89,46 @@ export function parseExcelFile(file: File): Promise<DiveEntry[]> {
           const getCellValue = (col: number): string => {
             const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: col })
             const cell = sheet[cellRef]
-            return cell ? String(cell.v || '') : ''
+            if (!cell) return ''
+            if (cell.t === 'n' && !cell.w && col === 2) {
+              return String(cell.v)
+            }
+            return cell.w || (cell.v !== undefined ? String(cell.v) : '')
           }
           
-          const col0 = getCellValue(0)
-          const col1 = getCellValue(1)
-          const col2 = getCellValue(2)
-          const col3 = getCellValue(3)
-          const col4 = getCellValue(4)
-          const col5 = getCellValue(5)
-          const col6 = getCellValue(6)
+          const col0 = getCellValue(0) // diveNumber
+          const col1 = getCellValue(1) // country
+          const col2 = getCellValue(2) // siteName
+          const col3 = getCellValue(3) // date
+          const col4 = getCellValue(4) // dayNumber
+          const col5 = getCellValue(5) // maxDepth (feet)
+          const col6 = getCellValue(6) // duration
+          const col7 = getCellValue(7) // notes
+          const col8 = getCellValue(8) // countryDescription
           
           if (dives.length < 3) {
-            console.log(`Row ${rowIdx}: country=${col0}, site=${col1}, date=${col2}, day=${col3}, depth=${col4}, duration=${col5}, notes=${col6}`)
+            console.log(`Row ${rowIdx}: number=${col0}, country=${col1}, site=${col2}, date=${col3}, day=${col4}, depth=${col5}, duration=${col6}, notes=${col7}, desc=${col8}`)
           }
           
-          const maxDepthFeet = parseNumber(col4)
+          const diveNumber = parseNumber(col0) || undefined
+          const maxDepthFeet = parseNumber(col5)
           const maxDepthMeters = maxDepthFeet ? Math.round(maxDepthFeet / 3.28084) : 0
           
           dives.push({
             id: `import-${Date.now()}-${rowIdx}`,
-            country: col0,
-            siteName: col1 || 'Unknown Site',
-            date: parseDate(col2),
-            dayNumber: parseNumber(col3),
-            location: col0,
+            diveNumber,
+            country: col1,
+            countryDescription: col8,
+            siteName: col2 || 'Unknown Site',
+            date: parseDate(col3),
+            dayNumber: parseNumber(col4),
+            location: col1,
             maxDepth: maxDepthMeters,
-            duration: parseNumber(col5),
+            duration: parseNumber(col6),
             waterTemp: 0,
             buddyName: '',
             marineLife: [],
-            notes: col6,
+            notes: col7,
             photos: [],
             createdAt: new Date().toISOString(),
           })

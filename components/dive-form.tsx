@@ -10,7 +10,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MarineLifeSelector } from '@/components/marine-life-selector'
 import { PhotoUpload } from '@/components/photo-upload'
 import type { DiveEntry, MarineLifeEntry } from '@/lib/types'
-import { ArrowLeft, Waves } from 'lucide-react'
+import { ArrowLeft, Waves, Tag } from 'lucide-react'
+
+const DIVE_TAGS = [
+  'Wreck',
+  'Night',
+  'Cave',
+  'Drift',
+  'Deep',
+  'Shallow',
+  'Shore',
+  'Boat',
+  'Training',
+  'Technical',
+  'Wall',
+  'Reef',
+]
 
 interface DiveFormProps {
   onSubmit: (dive: Omit<DiveEntry, 'id' | 'createdAt'>) => void
@@ -21,35 +36,44 @@ interface DiveFormProps {
 export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
   const isEditing = !!initialData
 
-  const [country, setCountry] = useState(initialData?.country || '')
+  const [location, setLocation] = useState(initialData?.location || initialData?.country || '')
   const [siteName, setSiteName] = useState(initialData?.siteName || '')
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0])
   const [dayNumber, setDayNumber] = useState(initialData?.dayNumber?.toString() || '')
+  const [depthUnit, setDepthUnit] = useState<'meters' | 'feet'>('meters')
   const [maxDepth, setMaxDepth] = useState(initialData?.maxDepth?.toString() || '')
   const [duration, setDuration] = useState(initialData?.duration?.toString() || '')
+  const [tempUnit, setTempUnit] = useState<'celsius' | 'fahrenheit'>('celsius')
   const [waterTemp, setWaterTemp] = useState(initialData?.waterTemp?.toString() || '')
-  const [location, setLocation] = useState(initialData?.location || '')
   const [buddyName, setBuddyName] = useState(initialData?.buddyName || '')
   const [marineLife, setMarineLife] = useState<MarineLifeEntry[]>(initialData?.marineLife || [])
   const [notes, setNotes] = useState(initialData?.notes || '')
   const [photos, setPhotos] = useState<string[]>(initialData?.photos || [])
+  const [tags, setTags] = useState<string[]>(initialData?.tags || [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    const depthValue = parseFloat(maxDepth) || 0
+    const finalDepth = depthUnit === 'feet' ? depthValue / 3.28084 : depthValue
+    
+    const tempValue = parseFloat(waterTemp) || 0
+    const finalTemp = tempUnit === 'fahrenheit' ? (tempValue - 32) * 5 / 9 : tempValue
 
     onSubmit({
-      country,
+      location,
+      country: location,
       siteName,
       date,
       dayNumber: parseInt(dayNumber) || undefined,
-      location,
-      maxDepth: parseFloat(maxDepth) || 0,
+      maxDepth: Math.round(finalDepth * 100) / 100,
       duration: parseInt(duration) || 0,
-      waterTemp: parseFloat(waterTemp) || 0,
+      waterTemp: Math.round(finalTemp * 10) / 10,
       buddyName,
       marineLife,
       notes,
       photos,
+      tags,
     })
   }
 
@@ -73,16 +97,17 @@ export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Country & Site Name */}
+          {/* Location & Site Name */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
+              <Label htmlFor="location">Location</Label>
               <Input
-                id="country"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
+                id="location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
                 placeholder="Belize"
                 className="bg-secondary/50"
+                required
               />
             </div>
             <div className="space-y-2">
@@ -127,13 +152,31 @@ export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
           {/* Max Depth & Duration */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="maxDepth">Max Depth (m)</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="maxDepth">Max Depth</Label>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setDepthUnit('meters')}
+                    className={`text-xs px-2 py-0.5 rounded ${depthUnit === 'meters' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+                  >
+                    m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDepthUnit('feet')}
+                    className={`text-xs px-2 py-0.5 rounded ${depthUnit === 'feet' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+                  >
+                    ft
+                  </button>
+                </div>
+              </div>
               <Input
                 id="maxDepth"
                 type="number"
                 value={maxDepth}
                 onChange={(e) => setMaxDepth(e.target.value)}
-                placeholder="30"
+                placeholder={depthUnit === 'meters' ? '30' : '100'}
                 className="bg-secondary/50"
               />
             </div>
@@ -150,26 +193,34 @@ export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
             </div>
           </div>
 
-          {/* Water Temp & Location */}
+          {/* Water Temperature */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="waterTemp">Water Temperature (°C)</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="waterTemp">Water Temperature</Label>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setTempUnit('celsius')}
+                    className={`text-xs px-2 py-0.5 rounded ${tempUnit === 'celsius' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+                  >
+                    °C
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTempUnit('fahrenheit')}
+                    className={`text-xs px-2 py-0.5 rounded ${tempUnit === 'fahrenheit' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+                  >
+                    °F
+                  </button>
+                </div>
+              </div>
               <Input
                 id="waterTemp"
                 type="number"
                 value={waterTemp}
                 onChange={(e) => setWaterTemp(e.target.value)}
-                placeholder="26"
-                className="bg-secondary/50"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Lighthouse Reef"
+                placeholder={tempUnit === 'celsius' ? '26' : '79'}
                 className="bg-secondary/50"
               />
             </div>
@@ -195,6 +246,34 @@ export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
               onChange={setMarineLife}
               placeholder="Search species or add custom..."
             />
+          </div>
+
+          {/* Tags */}
+          <div className="space-y-2">
+            <Label>Tags</Label>
+            <div className="flex flex-wrap gap-2">
+              {DIVE_TAGS.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => {
+                    setTags(prev => 
+                      prev.includes(tag) 
+                        ? prev.filter(t => t !== tag)
+                        : [...prev, tag]
+                    )
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                    tags.includes(tag)
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
+                  }`}
+                >
+                  <Tag className="size-3 inline mr-1" />
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Notes */}

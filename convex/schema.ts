@@ -2,8 +2,14 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  folders: defineTable({
+    name: v.string(),
+    description: v.string(),
+  }).index("by_name", ["name"]),
+  
   dives: defineTable({
     country: v.optional(v.string()),
+    countryDescription: v.optional(v.string()),
     siteName: v.string(),
     date: v.string(),
     dayNumber: v.optional(v.number()),
@@ -23,7 +29,9 @@ export default defineSchema({
     ),
     notes: v.string(),
     photos: v.array(v.string()),
+    tags: v.optional(v.array(v.string())),
     createdAt: v.string(),
+    diveNumber: v.optional(v.number()),
     visibility: v.optional(v.number()), // Legacy field - will be removed
   }).index("by_date", ["date"]),
   

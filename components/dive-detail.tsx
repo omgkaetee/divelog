@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,21 +19,27 @@ import type { DiveEntry } from '@/lib/types'
 import { formatDepthBoth, formatTempBoth } from '@/lib/types'
 import {
   ArrowLeft,
-  MapPin,
-  Map,
-  Calendar,
   ArrowDown,
-  Clock,
-  Eye,
-  Thermometer,
-  Users,
-  Fish,
-  Trash2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  
+  Calendar,
+  MapPin,
+  Clock,
+  Thermometer,
+  Waves,
+  Anchor,
+  User,
+  Fish,
+  Image,
+  Map,
+  Trash2,
   Pencil,
   Hash,
   Check,
+  MapPinOff,
+  
 } from 'lucide-react'
 
 interface DiveDetailProps {
@@ -42,14 +47,18 @@ interface DiveDetailProps {
   onBack: () => void
   onDelete: () => void
   onEdit: () => void
-  onUpdateCountry?: (country: string) => void
+  onUpdateCountry?: (country: string, countryDescription?: string) => void
+  onNext?: () => void
+  onPrev?: () => void
 }
 
-export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry }: DiveDetailProps) {
+export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry, onNext, onPrev }: DiveDetailProps) {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditingCountry, setIsEditingCountry] = useState(false)
   const [editCountry, setEditCountry] = useState(dive.country)
+  const [editCountryDescription, setEditCountryDescription] = useState(dive.countryDescription || '')
+  const [showMap, setShowMap] = useState(false)
 
   const formattedDate = new Date(dive.date).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -95,11 +104,12 @@ export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry }: 
               >
                 <Pencil className="size-5" />
               </Button>
+
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="text-muted-foreground hover:text-destructive"
+                className="text-muted-foreground hover:bg-destructive hover:text-white"
               >
                 <Trash2 className="size-5" />
               </Button>
@@ -117,63 +127,66 @@ export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry }: 
                     <AlertDialogAction
                       onClick={onDelete}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      autoFocus
                     >
                       Delete
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+
+              {onPrev && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onPrev}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <ChevronLeft className="size-5" />
+                </Button>
+              )}
+              {onNext && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onNext}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <ChevronRight className="size-5" />
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Photo Gallery */}
-          {dive.photos.length > 0 && (
-            <div className="space-y-3">
-              <div
-                className="aspect-video w-full rounded-lg overflow-hidden cursor-pointer"
-                onClick={() => setSelectedPhotoIndex(0)}
-              >
-                <img
-                  src={dive.photos[0]}
-                  alt={dive.siteName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              {dive.photos.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {dive.photos.map((photo, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedPhotoIndex(index)}
-                      className="flex-shrink-0 size-16 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-colors"
-                    >
-                      <img
-                        src={photo}
-                        alt={`Photo ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Location */}
+          {/* Location & Date */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <MapPin className="size-4" />
-              <span>{dive.location || 'Unknown location'}</span>
-            </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="size-4" />
               <span>{formattedDate}</span>
             </div>
+            {dive.location && (
+              <button
+                onClick={() => setShowMap(!showMap)}
+                className="flex items-center gap-2 text-foreground hover:text-primary transition-colors cursor-pointer"
+              >
+                <MapPin className="size-4 text-primary" />
+                <span className="underline decoration-dotted">{dive.location}</span>
+                {showMap ? <MapPinOff className="size-3 text-primary" /> : <ChevronDown className="size-3" />}
+              </button>
+            )}
+            {showMap && dive.location && (
+              <iframe
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(dive.location)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+                className="w-full h-40 rounded-lg border-0 mt-2"
+                loading="lazy"
+                title={`Map of ${dive.location}`}
+              />
+            )}
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex flex-wrap gap-4">
             <StatCard
               icon={<ArrowDown className="size-5" />}
               label="Max Depth"
@@ -196,90 +209,63 @@ export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry }: 
               label="Water Temp"
               value={formatTempBoth(dive.waterTemp)}
             />
-            {dive.country && (
-              <StatCard
-                icon={<MapPin className="size-5" />}
-                label="Country"
-                value={
-                  isEditingCountry ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={editCountry}
-                        onChange={(e) => setEditCountry(e.target.value)}
-                        className="h-6 text-sm"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && onUpdateCountry) {
-                            onUpdateCountry(editCountry)
-                            setIsEditingCountry(false)
-                          }
-                          if (e.key === 'Escape') {
-                            setEditCountry(dive.country)
-                            setIsEditingCountry(false)
-                          }
-                        }}
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-1"
-                        onClick={() => {
-                          if (onUpdateCountry) {
-                            onUpdateCountry(editCountry)
-                            setIsEditingCountry(false)
-                          }
-                        }}
-                      >
-                        <Check className="size-3" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <span 
-                      className="cursor-pointer hover:text-primary"
-                      onClick={() => {
-                        setEditCountry(dive.country)
-                        setIsEditingCountry(true)
-                      }}
-                    >
-                      {dive.country}
-                    </span>
-                  )
-                }
-              />
-            )}
           </div>
 
-          {/* Location Map */}
-          {dive.location && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Map className="size-4" />
-                <span className="text-sm font-medium">Location</span>
-              </div>
-              {(() => {
-                const mapQuery = dive.country && dive.location 
-                  ? `${dive.location}, ${dive.country}` 
-                  : dive.country || dive.location || ''
-                return (
+          {/* Photo Gallery */}
+          {dive.photos.length > 0 && (
+            <div className="space-y-3">
+              <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-secondary/30">
+                {dive.photos.length > 1 && (
                   <>
-                    <iframe
-                      src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
-                      className="w-full aspect-video rounded-lg border-0"
-                      loading="lazy"
-                      title={`Map of ${mapQuery}`}
-                    />
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline"
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedPhotoIndex(prev => prev === null ? 0 : (prev > 0 ? prev - 1 : dive.photos.length - 1))}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80 z-10"
                     >
-                      Open in Google Maps
-                    </a>
-                    <p className="text-sm text-muted-foreground">{mapQuery}</p>
+                      <ChevronLeft className="size-6" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedPhotoIndex(prev => prev === null ? 1 : (prev < dive.photos.length - 1 ? prev + 1 : 0))}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80 z-10"
+                    >
+                      <ChevronRight className="size-6" />
+                    </Button>
                   </>
-                )
-              })()}
+                )}
+                <img
+                  src={dive.photos[selectedPhotoIndex ?? 0]}
+                  alt={dive.siteName}
+                  className="w-full h-full object-contain cursor-pointer"
+                  onClick={() => setSelectedPhotoIndex(selectedPhotoIndex ?? 0)}
+                />
+                {dive.photos.length > 1 && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-background/50 px-2 py-1 rounded text-xs">
+                    {(selectedPhotoIndex ?? 0) + 1} / {dive.photos.length}
+                  </div>
+                )}
+              </div>
+              {dive.photos.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {dive.photos.map((photo, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedPhotoIndex(index)}
+                      className={`flex-shrink-0 size-14 rounded-lg overflow-hidden border-2 transition-colors ${
+                        (selectedPhotoIndex ?? 0) === index ? 'border-primary' : 'border-transparent'
+                      }`}
+                    >
+                      <img
+                        src={photo}
+                        alt={`Photo ${index + 1}`}
+                        className="w-full h-full object-contain"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -291,6 +277,21 @@ export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry }: 
                 <p className="text-sm text-muted-foreground">Dive Buddy</p>
                 <p className="font-medium">{dive.buddyName}</p>
               </div>
+            </div>
+          )}
+
+          {/* Tags */}
+          {dive.tags && dive.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {dive.tags.map((tag, index) => (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="bg-primary/10 text-primary border-primary/20"
+                >
+                  {tag}
+                </Badge>
+              ))}
             </div>
           )}
 
@@ -333,56 +334,16 @@ export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry }: 
           )}
         </CardContent>
       </Card>
-
-      {/* Photo Lightbox */}
-      <Dialog open={selectedPhotoIndex !== null} onOpenChange={() => setSelectedPhotoIndex(null)}>
-        <DialogContent className="max-w-4xl bg-background/95 backdrop-blur-md border-border/50 p-2">
-          {selectedPhotoIndex !== null && (
-            <div className="relative">
-              <img
-                src={dive.photos[selectedPhotoIndex]}
-                alt={`Photo ${selectedPhotoIndex + 1}`}
-                className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
-              />
-              {dive.photos.length > 1 && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handlePrevPhoto}
-                    disabled={selectedPhotoIndex === 0}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80"
-                  >
-                    <ChevronLeft className="size-6" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleNextPhoto}
-                    disabled={selectedPhotoIndex === dive.photos.length - 1}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/50 hover:bg-background/80"
-                  >
-                    <ChevronRight className="size-6" />
-                  </Button>
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/50 px-3 py-1 rounded-full text-sm">
-                    {selectedPhotoIndex + 1} / {dive.photos.length}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </>
   )
 }
 
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
-    <div className="p-4 bg-secondary/30 rounded-lg text-center">
+    <div className="flex-1 p-4 bg-secondary/30 rounded-lg text-center min-w-[120px]">
       <div className="text-primary flex justify-center mb-2">{icon}</div>
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className="font-semibold text-foreground">{value}</p>
+      <div className="font-semibold text-foreground">{value}</div>
     </div>
   )
 }

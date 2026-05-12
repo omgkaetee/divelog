@@ -1,6 +1,7 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import type { DiveEntry } from '@/lib/types'
 import { formatDepthBoth } from '@/lib/types'
 import { MapPin, Clock, ArrowDown, Calendar, Icon } from 'lucide-react'
@@ -9,9 +10,10 @@ import { maskSnorkel } from '@lucide/lab'
 interface DiveCardProps {
   dive: DiveEntry
   onClick: () => void
+  diveNumber?: number
 }
 
-export function DiveCard({ dive, onClick }: DiveCardProps) {
+export function DiveCard({ dive, onClick, diveNumber }: DiveCardProps) {
   const formattedDate = new Date(dive.date).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -42,9 +44,16 @@ export function DiveCard({ dive, onClick }: DiveCardProps) {
 
           {/* Details */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif text-lg font-semibold text-foreground truncate">
-              {dive.siteName}
-            </h3>
+            <div className="flex items-center gap-2">
+              {diveNumber !== undefined && (
+                <span className="text-xs font-medium text-muted-foreground/60 bg-secondary/50 px-1.5 py-0.5 rounded">
+                  #{diveNumber}
+                </span>
+              )}
+              <h3 className="font-serif text-lg font-semibold text-foreground truncate">
+                {dive.siteName}
+              </h3>
+            </div>
             
             <div className="flex items-center gap-1.5 text-muted-foreground text-sm mt-1">
               <MapPin className="size-3.5" />
@@ -65,6 +74,16 @@ export function DiveCard({ dive, onClick }: DiveCardProps) {
                 <span>{dive.duration} min</span>
               </div>
             </div>
+
+            {dive.tags && dive.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {dive.tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary" className="text-[10px] py-0 h-5 bg-primary/10 text-primary">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
 
             
           </div>

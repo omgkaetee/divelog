@@ -9,6 +9,7 @@ export interface MarineLifeEntry {
 export interface DiveEntry {
   id: string
   country: string
+  countryDescription?: string
   siteName: string
   date: string
   dayNumber?: number
@@ -20,7 +21,9 @@ export interface DiveEntry {
   marineLife: MarineLifeEntry[]
   notes: string
   photos: string[] // base64 encoded images
+  tags: string[]
   createdAt: string
+  diveNumber?: number
 }
 
 export interface UnitPreferences {

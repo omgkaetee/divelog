@@ -14,20 +14,41 @@ interface PhotoUploadProps {
 export function PhotoUpload({ photos, onChange, className }: PhotoUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
-
-    Array.from(files).forEach((file) => {
+  const compressImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+    return new Promise((resolve) => {
       const reader = new FileReader()
-      reader.onload = (event) => {
-        const base64 = event.target?.result as string
-        onChange([...photos, base64])
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width
+            width = maxWidth
+          }
+          
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(img, 0, 0, width, height)
+          resolve(canvas.toDataURL('image/jpeg', quality))
+        }
+        img.src = e.target?.result as string
       }
       reader.readAsDataURL(file)
     })
+  }
 
-    // Reset input
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    Promise.all(Array.from(files).map(f => compressImage(f))).then((newPhotos) => {
+      onChange([...photos, ...newPhotos])
+    })
+
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }

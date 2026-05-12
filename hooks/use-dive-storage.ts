@@ -8,6 +8,10 @@ import type { DiveEntry } from '@/lib/types'
 
 export function useDiveStorage() {
   const rawDives = useQuery(api.dives.list)
+  const folders = useQuery(api.dives.listFolders) || []
+  
+  const setFolderDescriptionMutation = useMutation(api.dives.setFolderDescription)
+  const deleteFolderMutation = useMutation(api.dives.deleteFolder)
   const dives: DiveEntry[] = rawDives?.map((d) => ({
     id: d._id,
     siteName: d.siteName,
@@ -21,7 +25,9 @@ export function useDiveStorage() {
     marineLife: d.marineLife,
     notes: d.notes,
     photos: d.photos,
+    tags: d.tags || [],
     createdAt: d.createdAt,
+    diveNumber: d.diveNumber,
   })) || []
   
   const createDiveMutation = useMutation(api.dives.create)
@@ -42,7 +48,9 @@ export function useDiveStorage() {
       marineLife: dive.marineLife,
       notes: dive.notes,
       photos: dive.photos,
+      tags: dive.tags || [],
       createdAt,
+      diveNumber: dive.diveNumber,
     })
     return { ...dive, id, createdAt } as DiveEntry
   }, [createDiveMutation])
@@ -63,6 +71,7 @@ export function useDiveStorage() {
       marineLife: updates.marineLife ?? existing.marineLife,
       notes: updates.notes ?? existing.notes,
       photos: updates.photos ?? existing.photos,
+      tags: updates.tags ?? existing.tags ?? [],
       createdAt: updates.createdAt ?? existing.createdAt,
     })
   }, [dives, updateDiveMutation])
@@ -75,17 +84,48 @@ export function useDiveStorage() {
     return dives.find(d => d.id === id)
   }, [dives])
 
+  const setFolderDescription = useCallback(async (name: string, description: string) => {
+    await setFolderDescriptionMutation({ name, description })
+  }, [setFolderDescriptionMutation])
+
+  const deleteFolder = useCallback(async (name: string) => {
+    await deleteFolderMutation({ name })
+  }, [deleteFolderMutation])
+
+  const getFolderDescription = useCallback((name: string) => {
+    const folder = folders.find(f => f.name === name)
+    return folder?.description || ''
+  }, [folders])
+
   const totalDives = dives.length
   const totalBottomTime = dives.reduce((acc, dive) => acc + dive.duration, 0)
+  
+  const statsByCountry = dives.reduce((acc, dive) => {
+    const country = dive.location.split(',').pop()?.trim() || 'Unknown'
+    acc[country] = (acc[country] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+  
+  const statsByYear = dives.reduce((acc, dive) => {
+    const year = dive.date ? new Date(dive.date).getFullYear().toString() : 'Unknown'
+    acc[year] = (acc[year] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
 
   return {
     dives,
+    folders,
     isLoaded: true,
     addDive,
     updateDive: updateDiveEntry,
     deleteDive: deleteDiveEntry,
     getDive,
+    setFolderDescription,
+    getFolderDescription,
+    deleteFolder,
     totalDives,
     totalBottomTime,
+    statsByCountry,
+    statsByYear,
   }
 }
