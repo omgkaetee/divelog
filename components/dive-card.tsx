@@ -4,8 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { DiveEntry } from '@/lib/types'
 import { formatDepthBoth } from '@/lib/types'
-import { MapPin, Clock, ArrowDown, Calendar, Icon } from 'lucide-react'
-import { maskSnorkel } from '@lucide/lab'
+import { MapPin, Clock, ArrowDown, Calendar, Waves } from 'lucide-react'
 
 interface DiveCardProps {
   dive: DiveEntry
@@ -14,7 +13,7 @@ interface DiveCardProps {
 }
 
 export function DiveCard({ dive, onClick, diveNumber }: DiveCardProps) {
-  const formattedDate = new Date(dive.date).toLocaleDateString('en-US', {
+  const formattedDate = new Date(dive.date + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -38,13 +37,18 @@ export function DiveCard({ dive, onClick, diveNumber }: DiveCardProps) {
             </div>
           ) : (
             <div className="flex-shrink-0 size-20 bg-secondary/50 rounded-lg border border-border/50 flex items-center justify-center">
-              <Icon iconNode={maskSnorkel} className="size-8 text-primary/40" />
+              <Waves className="size-8 text-primary/40" />
             </div>
           )}
 
           {/* Details */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
+              {dive.activityType === 'snorkel' && (
+                <Badge variant="secondary" className="text-[10px] py-0 h-5 bg-emerald-100 text-emerald-700">
+                  Snorkel
+                </Badge>
+              )}
               {diveNumber !== undefined && (
                 <span className="text-xs font-medium text-muted-foreground/60 bg-secondary/50 px-1.5 py-0.5 rounded">
                   #{diveNumber}

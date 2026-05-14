@@ -8,6 +8,7 @@ export interface MarineLifeEntry {
 
 export interface DiveEntry {
   id: string
+  activityType?: 'dive' | 'snorkel'
   country: string
   countryDescription?: string
   siteName: string
@@ -24,6 +25,8 @@ export interface DiveEntry {
   tags: string[]
   createdAt: string
   diveNumber?: number
+  latitude?: number
+  longitude?: number
 }
 
 export interface UnitPreferences {

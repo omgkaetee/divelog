@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MarineLifeSelector } from '@/components/marine-life-selector'
 import { PhotoUpload } from '@/components/photo-upload'
 import type { DiveEntry, MarineLifeEntry } from '@/lib/types'
-import { ArrowLeft, Waves, Tag } from 'lucide-react'
+import { ArrowLeft, Waves, Tag, Anchor, Footprints } from 'lucide-react'
 
 const DIVE_TAGS = [
   'Wreck',
@@ -28,15 +28,16 @@ const DIVE_TAGS = [
 ]
 
 interface DiveFormProps {
-  onSubmit: (dive: Omit<DiveEntry, 'id' | 'createdAt'>) => void
+  onSubmit: (dive: Omit<DiveEntry, 'id' | 'createdAt'>, diveId?: string) => void
   onCancel: () => void
   initialData?: DiveEntry
+  initialLocation?: string
 }
 
-export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
+export function DiveForm({ onSubmit, onCancel, initialData, initialLocation }: DiveFormProps) {
   const isEditing = !!initialData
 
-  const [location, setLocation] = useState(initialData?.location || initialData?.country || '')
+  const [location, setLocation] = useState(initialData?.location || initialData?.country || initialLocation || '')
   const [siteName, setSiteName] = useState(initialData?.siteName || '')
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0])
   const [dayNumber, setDayNumber] = useState(initialData?.dayNumber?.toString() || '')
@@ -50,6 +51,7 @@ export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
   const [notes, setNotes] = useState(initialData?.notes || '')
   const [photos, setPhotos] = useState<string[]>(initialData?.photos || [])
   const [tags, setTags] = useState<string[]>(initialData?.tags || [])
+  const [activityType, setActivityType] = useState<'dive' | 'snorkel'>(initialData?.activityType || 'dive')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,6 +63,7 @@ export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
     const finalTemp = tempUnit === 'fahrenheit' ? (tempValue - 32) * 5 / 9 : tempValue
 
     onSubmit({
+      activityType,
       location,
       country: location,
       siteName,
@@ -74,7 +77,9 @@ export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
       notes,
       photos,
       tags,
-    })
+      latitude: initialData?.latitude,
+      longitude: initialData?.longitude,
+    }, initialData?.id)
   }
 
   return (
@@ -91,12 +96,40 @@ export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
           </Button>
           <div className="flex items-center gap-2">
             <Waves className="size-5 text-primary" />
-            <CardTitle className="font-serif text-xl">{isEditing ? 'Edit Dive' : 'Log New Dive'}</CardTitle>
+            <CardTitle className="font-serif text-xl">{isEditing ? 'Edit Entry' : 'Log New'}</CardTitle>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Activity Type Toggle */}
+          <div className="flex gap-2 p-1 bg-secondary/30 rounded-lg w-fit">
+            <button
+              type="button"
+              onClick={() => setActivityType('dive')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                activityType === 'dive'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Anchor className="size-4" />
+              <span className="text-sm font-medium">Scuba Dive</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivityType('snorkel')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+                activityType === 'snorkel'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Footprints className="size-4" />
+              <span className="text-sm font-medium">Snorkel</span>
+            </button>
+          </div>
+
           {/* Location & Site Name */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -132,7 +165,7 @@ export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="bg-secondary/50"
+                className="bg-secondary/50 [&::-webkit-calendar-picker-indicator]:invert-100"
                 required
               />
             </div>
@@ -299,7 +332,7 @@ export function DiveForm({ onSubmit, onCancel, initialData }: DiveFormProps) {
             type="submit"
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-lg font-medium"
           >
-            {isEditing ? 'Save Changes' : 'Log This Dive'}
+            {isEditing ? 'Save Changes' : `Log This ${activityType === 'snorkel' ? 'Snorkel Trip' : 'Dive'}`}
           </Button>
         </form>
       </CardContent>

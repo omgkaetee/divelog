@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Playfair_Display } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ConvexClientProvider } from '@/components/providers'
+import { ServiceWorkerRegistration } from '@/components/service-worker-registration'
 import './globals.css'
 
 const dmSans = DM_Sans({
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
   title: 'DeepLog - Premium Dive Journal',
   description: 'Your personal underwater adventure companion. Log dives, track marine life, and preserve memories from the deep.',
   generator: 'v0.app',
+  manifest: '/manifest.json',
   icons: {
     icon: [
       {
@@ -50,11 +52,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="bg-[#0a0f1e]">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body className={`${dmSans.variable} ${playfair.variable} font-sans antialiased`}>
         <ConvexClientProvider>
           {children}
         </ConvexClientProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        <ServiceWorkerRegistration />
       </body>
     </html>
   )

@@ -19,12 +19,13 @@ import { BubbleBackground } from '@/components/bubble-background'
 import { DiveForm } from '@/components/dive-form'
 import { DiveCard } from '@/components/dive-card'
 import { DiveDetail } from '@/components/dive-detail'
+import { DiveMap } from '@/components/dive-map'
 import { useDiveStorage } from '@/hooks/use-dive-storage'
 import type { DiveEntry } from '@/lib/types'
 import { importDives } from '@/lib/import-dives'
-import { Plus, Waves, Clock, Hash, Search, SlidersHorizontal, X, List, FolderOpen, ChevronDown, ChevronRight, ChevronLeft, Upload, Trash2, CheckSquare, Square, Check, Pencil, Loader2 } from 'lucide-react'
+import { Plus, Waves, Clock, Hash, Search, SlidersHorizontal, X, List, Globe, ChevronDown, ChevronRight, ChevronLeft, Upload, Trash2, CheckSquare, Square, Check, Pencil, Loader2, Map, Anchor, Footprints } from 'lucide-react'
 
-type View = 'list' | 'form' | 'detail' | 'edit' | 'country'
+type View = 'list' | 'form' | 'detail' | 'edit' | 'country' | 'map'
 type SortOption = 'newest' | 'oldest' | 'deepest' | 'longest' | 'byNumber'
 type ListViewMode = 'list' | 'folder'
 
@@ -37,10 +38,12 @@ export function DiveLog() {
     updateDive,
     deleteDive,
     getDive,
+    duplicateDive,
     setFolderDescription,
     getFolderDescription,
     deleteFolder,
     totalDives,
+    totalSnorkels,
     totalBottomTime,
     statsByCountry,
     statsByYear,
@@ -64,20 +67,27 @@ export function DiveLog() {
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedDives, setSelectedDives] = useState<Set<string>>(new Set())
   const [editingFolder, setEditingFolder] = useState<string | null>(null)
+  const [createFromContext, setCreateFromContext] = useState<{ from: 'home' | 'folder', location?: string, folderKey?: string } | null>(null)
   const [folderNameValue, setFolderNameValue] = useState('')
   const [folderYearValue, setFolderYearValue] = useState('')
   const [folderDescValue, setFolderDescValue] = useState('')
+  const [activityTab, setActivityTab] = useState<'all' | 'dive' | 'snorkel'>('all')
 
   const handleAddDive = (dive: Omit<DiveEntry, 'id' | 'createdAt'>) => {
     addDive(dive)
-    setView('list')
+    if (createFromContext?.from === 'folder' && createFromContext.folderKey) {
+      setSelectedCountry(createFromContext.folderKey)
+      setView('country')
+    } else {
+      setView('list')
+    }
+    setCreateFromContext(null)
   }
 
-  const handleEditDive = (dive: Omit<DiveEntry, 'id' | 'createdAt'>) => {
-    if (selectedDiveId) {
-      updateDive(selectedDiveId, dive)
-      setView('detail')
-    }
+  const handleEditDive = async (dive: Omit<DiveEntry, 'id' | 'createdAt'>, diveId: string) => {
+    await updateDive(diveId, dive)
+    setSelectedDiveId(diveId)
+    setView('detail')
   }
 
   const handleViewDive = (id: string) => {
@@ -102,10 +112,31 @@ export function DiveLog() {
   }
 
   const handleDeleteDive = () => {
-    if (selectedDiveId) {
+    if (selectedDiveId && selectedDive) {
       deleteDive(selectedDiveId)
       setSelectedDiveId(null)
-      setView('list')
+      // If in a folder, go back to folder; otherwise go to list
+      if (selectedCountry) {
+        setView('country')
+      } else {
+        setView('list')
+      }
+    }
+  }
+
+  const handleDuplicateDive = async () => {
+    if (selectedDiveId && selectedDive) {
+      await duplicateDive(selectedDiveId)
+      // Navigate back to the folder where the original dive was
+      const locationParts = selectedDive.location.split(',')
+      const country = locationParts[locationParts.length - 1]?.trim() || selectedDive.country || 'Unknown'
+      const dateYear = selectedDive.date ? new Date(selectedDive.date).getFullYear() : null
+      const year = (dateYear && !isNaN(dateYear)) ? dateYear.toString() : ''
+      const folderKey = year ? `${country} ${year}` : country
+      
+      setSelectedDiveId(null)
+      setSelectedCountry(folderKey)
+      setView('country')
     }
   }
 
@@ -279,7 +310,9 @@ export function DiveLog() {
     const groups: Record<string, DiveEntry[]> = {}
     filteredDives.forEach(dive => {
       const locationParts = dive.location.split(',')
-      const country = locationParts[locationParts.length - 1]?.trim() || 'Unknown'
+      let country = locationParts[locationParts.length - 1]?.trim() || 'Unknown'
+      // Remove trailing year from country if it looks like "Country Year" (e.g., "Indonesia 2022")
+      country = country.replace(/\s+\d{4}$/, '').trim() || 'Unknown'
       const dateYear = dive.date ? new Date(dive.date).getFullYear() : null
       const year = (dateYear && !isNaN(dateYear)) ? dateYear.toString() : ''
       const key = year ? `${country} ${year}` : country
@@ -431,6 +464,15 @@ export function DiveLog() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => setView('map')}
+              className={view === 'map' ? 'text-primary' : 'text-muted-foreground'}
+              title="Map view"
+            >
+              <Map className="size-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => {
                 setIsSelectionMode(!isSelectionMode)
                 setSelectedDives(new Set())
@@ -475,10 +517,18 @@ export function DiveLog() {
                 <div className="flex items-center justify-around">
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-2 text-primary mb-1">
-                      <Hash className="size-4" />
+                      <Anchor className="size-4" />
                       <span className="text-2xl font-bold">{totalDives}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Total Dives</p>
+                    <p className="text-xs text-muted-foreground">Dives</p>
+                  </div>
+                  <div className="w-px h-10 bg-border" />
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 text-primary mb-1">
+                      <Footprints className="size-4" />
+                      <span className="text-2xl font-bold">{totalSnorkels}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Snorkels</p>
                   </div>
                   <div className="w-px h-10 bg-border" />
                   <div className="text-center">
@@ -516,14 +566,16 @@ export function DiveLog() {
               </CardContent>
             </Card>
 
-            {/* Add Dive Button */}
+            {/* Add Dive Button - only show on home/list view, not in folder view */}
+            {view === 'list' && (
             <Button
-              onClick={() => setView('form')}
+              onClick={() => { setCreateFromContext({ from: 'home' }); setView('form') }}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 text-base font-medium gap-2"
             >
               <Plus className="size-5" />
               Log New Dive
             </Button>
+            )}
 
             {/* Filter Bar */}
             <div className="space-y-3">
@@ -560,7 +612,7 @@ export function DiveLog() {
                     onClick={() => setListViewMode('folder')}
                     className="rounded-none h-9 px-3"
                   >
-                    <FolderOpen className="size-4" />
+                    <Globe className="size-4" />
                   </Button>
                 </div>
               </div>
@@ -753,9 +805,22 @@ export function DiveLog() {
                   >
                     <ChevronLeft className="size-5" />
                   </Button>
-                  <FolderOpen className="size-5 text-primary" />
+                  <Globe className="size-5 text-primary" />
                   <span className="font-medium">{selectedCountry}</span>
                   <Badge className="bg-primary/20 text-primary text-xs">{groupedByCountry[selectedCountry]?.length || 0}</Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-primary hover:text-black"
+                    onClick={() => {
+                      const countryName = getCountryFromKey(selectedCountry)
+                      setCreateFromContext({ from: 'folder', location: countryName, folderKey: selectedCountry })
+                      setView('form')
+                    }}
+                  >
+                    <Plus className="size-4 mr-1" />
+                    Add
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -765,56 +830,102 @@ export function DiveLog() {
                     <Trash2 className="size-4" />
                   </Button>
                 </div>
-                {isSelectionMode && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const countryDives = groupedByCountry[selectedCountry] || []
-                        if (selectedDives.size === countryDives.length) {
-                          setSelectedDives(new Set())
-                        } else {
-                          setSelectedDives(new Set(countryDives.map(d => d.id)))
-                        }
-                      }}
-                      className="text-muted-foreground"
-                    >
-                      <span className="flex items-center gap-1">
-                        {selectedDives.size === (groupedByCountry[selectedCountry] || []).length ? <Check className="size-4" /> : <Square className="size-4" />}
-                        Select All ({(groupedByCountry[selectedCountry] || []).length})
-                      </span>
-                    </Button>
-                  </div>
-                )}
-                <div className="space-y-3">
-                  {groupedByCountry[selectedCountry]?.map((dive) => (
-                    <div key={dive.id} className="relative">
-                      {isSelectionMode && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleSelectDive(dive.id)
-                          }}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-1"
-                        >
-                          {selectedDives.has(dive.id) ? (
-                            <CheckSquare className="size-5 text-primary" />
-                          ) : (
-                            <Square className="size-5 text-muted-foreground" />
-                          )}
-                        </button>
+                {(() => {
+                  const countryDives = groupedByCountry[selectedCountry] || []
+                  const scubaDives = countryDives.filter(d => d.activityType !== 'snorkel')
+                  const snorkelDives = countryDives.filter(d => d.activityType === 'snorkel')
+                  const hasBoth = scubaDives.length > 0 && snorkelDives.length > 0
+                  
+                  const displayedDives = activityTab === 'all' ? countryDives 
+                    : activityTab === 'dive' ? scubaDives 
+                    : snorkelDives
+                  
+                  return (
+                    <>
+                      {hasBoth && (
+                        <div className="flex gap-1 p-1 bg-secondary/30 rounded-lg w-fit">
+                          <button
+                            onClick={() => setActivityTab('all')}
+                            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                              activityTab === 'all' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            All ({countryDives.length})
+                          </button>
+                          <button
+                            onClick={() => setActivityTab('dive')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                              activityTab === 'dive' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            <Anchor className="size-3.5" />
+                            Scuba ({scubaDives.length})
+                          </button>
+                          <button
+                            onClick={() => setActivityTab('snorkel')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                              activityTab === 'snorkel' ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            <Footprints className="size-3.5" />
+                            Snorkel ({snorkelDives.length})
+                          </button>
+                        </div>
                       )}
-                      <div className={isSelectionMode ? 'pl-10' : ''}>
-                        <DiveCard
-                          dive={dive}
-                          onClick={() => handleViewDive(dive.id)}
-                          diveNumber={divesWithNumbers[dive.id]}
-                        />
+                      
+                      {isSelectionMode && displayedDives.length > 0 && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (selectedDives.size === displayedDives.length) {
+                                setSelectedDives(new Set())
+                              } else {
+                                setSelectedDives(new Set(displayedDives.map(d => d.id)))
+                              }
+                            }}
+                            className="text-muted-foreground"
+                          >
+                            <span className="flex items-center gap-1">
+                              {selectedDives.size === displayedDives.length ? <Check className="size-4" /> : <Square className="size-4" />}
+                              Select All ({displayedDives.length})
+                            </span>
+                          </Button>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-3">
+                        {displayedDives.map((dive) => (
+                          <div key={dive.id} className="relative">
+                            {isSelectionMode && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleSelectDive(dive.id)
+                                }}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-1"
+                              >
+                                {selectedDives.has(dive.id) ? (
+                                  <CheckSquare className="size-5 text-primary" />
+                                ) : (
+                                  <Square className="size-5 text-muted-foreground" />
+                                )}
+                              </button>
+                            )}
+                            <div className={isSelectionMode ? 'pl-10' : ''}>
+                              <DiveCard
+                                dive={dive}
+                                onClick={() => handleViewDive(dive.id)}
+                                diveNumber={divesWithNumbers[dive.id]}
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    </>
+                  )
+                })()}
               </div>
             ) : (
               <div className="space-y-3">
@@ -868,7 +979,19 @@ export function DiveLog() {
         {view === 'form' && (
           <DiveForm
             onSubmit={handleAddDive}
-            onCancel={() => setView('list')}
+            onCancel={() => { setView('list'); setCreateFromContext(null) }}
+            initialLocation={createFromContext?.from === 'folder' ? createFromContext.location : undefined}
+          />
+        )}
+
+        {view === 'map' && (
+          <DiveMap
+            dives={filteredDives}
+            onBack={() => setView('list')}
+            onSelectDive={(id) => {
+              setSelectedDiveId(id)
+              setView('detail')
+            }}
           />
         )}
 
@@ -877,10 +1000,19 @@ export function DiveLog() {
             dive={selectedDive}
             onBack={() => {
               setSelectedDiveId(null)
-              setView('list')
+              if (selectedCountry) {
+                setView('country')
+              } else if (selectedDive) {
+                const country = selectedDive.location.split(',').pop()?.trim() || selectedDive.country
+                setSelectedCountry(country)
+                setView('country')
+              } else {
+                setView('list')
+              }
             }}
             onDelete={handleDeleteDive}
             onEdit={() => setView('edit')}
+            onDuplicate={handleDuplicateDive}
             onUpdateCountry={(country, countryDescription) => {
               if (selectedDiveId) {
                 updateDive(selectedDiveId, { 
@@ -897,7 +1029,7 @@ export function DiveLog() {
 
         {view === 'edit' && selectedDive && (
           <DiveForm
-            onSubmit={handleEditDive}
+            onSubmit={(dive, id) => handleEditDive(dive, id || selectedDiveId!)}
             onCancel={() => setView('detail')}
             initialData={selectedDive}
           />

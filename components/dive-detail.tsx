@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  Copy,
   
   Calendar,
   MapPin,
@@ -47,12 +48,13 @@ interface DiveDetailProps {
   onBack: () => void
   onDelete: () => void
   onEdit: () => void
+  onDuplicate: () => void
   onUpdateCountry?: (country: string, countryDescription?: string) => void
   onNext?: () => void
   onPrev?: () => void
 }
 
-export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry, onNext, onPrev }: DiveDetailProps) {
+export function DiveDetail({ dive, onBack, onDelete, onEdit, onDuplicate, onUpdateCountry, onNext, onPrev }: DiveDetailProps) {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditingCountry, setIsEditingCountry] = useState(false)
@@ -60,7 +62,7 @@ export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry, on
   const [editCountryDescription, setEditCountryDescription] = useState(dive.countryDescription || '')
   const [showMap, setShowMap] = useState(false)
 
-  const formattedDate = new Date(dive.date).toLocaleDateString('en-US', {
+  const formattedDate = new Date(dive.date + 'T00:00:00').toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -103,6 +105,15 @@ export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry, on
                 className="text-muted-foreground hover:text-primary"
               >
                 <Pencil className="size-5" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onDuplicate}
+                className="text-muted-foreground hover:text-primary"
+              >
+                <Copy className="size-5" />
               </Button>
 
               <Button
@@ -161,8 +172,8 @@ export function DiveDetail({ dive, onBack, onDelete, onEdit, onUpdateCountry, on
         <CardContent className="space-y-6">
           {/* Location & Date */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Calendar className="size-4" />
+            <div className="flex items-center gap-2 text-foreground">
+              <Calendar className="size-4 text-primary" />
               <span>{formattedDate}</span>
             </div>
             {dive.location && (

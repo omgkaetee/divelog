@@ -7,7 +7,8 @@ export default defineSchema({
     description: v.string(),
   }).index("by_name", ["name"]),
   
-  dives: defineTable({
+dives: defineTable({
+    activityType: v.optional(v.union(v.literal("dive"), v.literal("snorkel"))),
     country: v.optional(v.string()),
     countryDescription: v.optional(v.string()),
     siteName: v.string(),
@@ -32,8 +33,10 @@ export default defineSchema({
     tags: v.optional(v.array(v.string())),
     createdAt: v.string(),
     diveNumber: v.optional(v.number()),
-    visibility: v.optional(v.number()), // Legacy field - will be removed
-  }).index("by_date", ["date"]),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+  }).index("by_date", ["date"])
+    .index("by_location", ["latitude", "longitude"]),
   
   settings: defineTable({
     key: v.string(),

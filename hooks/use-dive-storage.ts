@@ -14,6 +14,7 @@ export function useDiveStorage() {
   const deleteFolderMutation = useMutation(api.dives.deleteFolder)
   const dives: DiveEntry[] = rawDives?.map((d) => ({
     id: d._id,
+    activityType: d.activityType,
     siteName: d.siteName,
     date: d.date,
     location: d.location,
@@ -28,18 +29,24 @@ export function useDiveStorage() {
     tags: d.tags || [],
     createdAt: d.createdAt,
     diveNumber: d.diveNumber,
+    latitude: d.latitude,
+    longitude: d.longitude,
   })) || []
   
   const createDiveMutation = useMutation(api.dives.create)
   const updateDiveMutation = useMutation(api.dives.update)
   const deleteDiveMutation = useMutation(api.dives.remove)
+  const duplicateDiveMutation = useMutation(api.dives.duplicate)
 
   const addDive = useCallback(async (dive: Omit<DiveEntry, 'id' | 'createdAt'>) => {
     const createdAt = new Date().toISOString()
     const id = await createDiveMutation({
+      activityType: dive.activityType,
       siteName: dive.siteName,
       date: dive.date,
       location: dive.location,
+      country: dive.country,
+      countryDescription: dive.countryDescription,
       maxDepth: dive.maxDepth,
       duration: dive.duration,
       visibility: dive.visibility,
@@ -58,14 +65,15 @@ export function useDiveStorage() {
   const updateDiveEntry = useCallback(async (id: string, updates: Partial<DiveEntry>) => {
     const existing = dives.find(d => d.id === id)
     if (!existing) return
-    await updateDiveMutation({
-      id: id as Id<"dives">,
+    const data = {
+      activityType: updates.activityType ?? existing.activityType,
       siteName: updates.siteName ?? existing.siteName,
       date: updates.date ?? existing.date,
       location: updates.location ?? existing.location,
+      country: updates.country ?? existing.country,
+      countryDescription: updates.countryDescription ?? existing.countryDescription,
       maxDepth: updates.maxDepth ?? existing.maxDepth,
       duration: updates.duration ?? existing.duration,
-      visibility: updates.visibility ?? existing.visibility,
       waterTemp: updates.waterTemp ?? existing.waterTemp,
       buddyName: updates.buddyName ?? existing.buddyName,
       marineLife: updates.marineLife ?? existing.marineLife,
@@ -73,12 +81,21 @@ export function useDiveStorage() {
       photos: updates.photos ?? existing.photos,
       tags: updates.tags ?? existing.tags ?? [],
       createdAt: updates.createdAt ?? existing.createdAt,
-    })
+      diveNumber: updates.diveNumber ?? existing.diveNumber,
+      dayNumber: updates.dayNumber ?? existing.dayNumber,
+      latitude: updates.latitude ?? existing.latitude,
+      longitude: updates.longitude ?? existing.longitude,
+    }
+    await updateDiveMutation({ id: id as Id<"dives">, data })
   }, [dives, updateDiveMutation])
 
   const deleteDiveEntry = useCallback(async (id: string) => {
     await deleteDiveMutation({ id: id as Id<"dives"> })
   }, [deleteDiveMutation])
+
+  const duplicateDiveEntry = useCallback(async (id: string) => {
+    await duplicateDiveMutation({ id: id as Id<"dives"> })
+  }, [duplicateDiveMutation])
 
   const getDive = useCallback((id: string) => {
     return dives.find(d => d.id === id)
@@ -97,7 +114,8 @@ export function useDiveStorage() {
     return folder?.description || ''
   }, [folders])
 
-  const totalDives = dives.length
+  const totalDives = dives.filter(d => d.activityType !== 'snorkel').length
+  const totalSnorkels = dives.filter(d => d.activityType === 'snorkel').length
   const totalBottomTime = dives.reduce((acc, dive) => acc + dive.duration, 0)
   
   const statsByCountry = dives.reduce((acc, dive) => {
@@ -119,11 +137,13 @@ export function useDiveStorage() {
     addDive,
     updateDive: updateDiveEntry,
     deleteDive: deleteDiveEntry,
+    duplicateDive: duplicateDiveEntry,
     getDive,
     setFolderDescription,
     getFolderDescription,
     deleteFolder,
     totalDives,
+    totalSnorkels,
     totalBottomTime,
     statsByCountry,
     statsByYear,
