@@ -10,9 +10,10 @@ interface DiveCardProps {
   dive: DiveEntry
   onClick: () => void
   diveNumber?: number
+  isPending?: boolean
 }
 
-export function DiveCard({ dive, onClick, diveNumber }: DiveCardProps) {
+export function DiveCard({ dive, onClick, diveNumber, isPending }: DiveCardProps) {
   const formattedDate = new Date(dive.date + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -47,6 +48,11 @@ export function DiveCard({ dive, onClick, diveNumber }: DiveCardProps) {
               {dive.activityType === 'snorkel' && (
                 <Badge variant="secondary" className="text-[10px] py-0 h-5 bg-emerald-100 text-emerald-700">
                   Snorkel
+                </Badge>
+              )}
+              {isPending && (
+                <Badge variant="secondary" className="text-[10px] py-0 h-5 bg-amber-100 text-amber-700">
+                  Pending
                 </Badge>
               )}
               {diveNumber !== undefined && (

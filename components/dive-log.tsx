@@ -21,6 +21,7 @@ import { DiveCard } from '@/components/dive-card'
 import { DiveDetail } from '@/components/dive-detail'
 import { DiveMap } from '@/components/dive-map'
 import { useDiveStorage } from '@/hooks/use-dive-storage'
+import { useOfflineStorage } from '@/hooks/use-offline-storage'
 import type { DiveEntry } from '@/lib/types'
 import { importDives } from '@/lib/import-dives'
 import { Plus, Waves, Clock, Hash, Search, SlidersHorizontal, X, List, Globe, ChevronDown, ChevronRight, ChevronLeft, Upload, Trash2, CheckSquare, Square, Check, Pencil, Loader2, Map, Anchor, Footprints } from 'lucide-react'
@@ -74,7 +75,13 @@ export function DiveLog() {
   const [activityTab, setActivityTab] = useState<'all' | 'dive' | 'snorkel'>('all')
 
   const handleAddDive = (dive: Omit<DiveEntry, 'id' | 'createdAt'>) => {
-    addDive(dive)
+    // If offline, save to localStorage instead of database
+    if (!isOnline) {
+      saveOfflineDive(dive)
+    } else {
+      addDive(dive)
+    }
+    
     if (createFromContext?.from === 'folder' && createFromContext.folderKey) {
       setSelectedCountry(createFromContext.folderKey)
       setView('country')
@@ -83,6 +90,41 @@ export function DiveLog() {
     }
     setCreateFromContext(null)
   }
+
+  // Get offline storage
+  const { isOnline, offlineDives, isSyncing, syncOfflineDives, hasPendingDives } = useOfflineStorage()
+
+  // Auto-sync when back online and there are pending dives
+  useEffect(() => {
+    if (isOnline && hasPendingDives && !isSyncing) {
+      syncOfflineDives(addDive as (dive: Omit<DiveEntry, 'id' | 'createdAt'>) => Promise<DiveEntry>)
+    }
+  }, [isOnline, hasPendingDives, isSyncing, syncOfflineDives, addDive])
+
+  // Combine regular dives with pending offline dives for display
+  const allDivesWithPending = useMemo(() => {
+    const offlineEntries: DiveEntry[] = offlineDives.map(d => ({
+      id: d.tempId,
+      siteName: d.siteName,
+      date: d.date,
+      location: d.location,
+      country: d.country,
+      maxDepth: d.maxDepth,
+      duration: d.duration,
+      waterTemp: d.waterTemp,
+      buddyName: d.buddyName,
+      marineLife: d.marineLife,
+      notes: d.notes,
+      photos: d.photos,
+      tags: d.tags || [],
+      createdAt: d.createdAt,
+      activityType: d.activityType,
+      latitude: d.latitude,
+      longitude: d.longitude,
+      pendingSync: true,
+    }))
+    return [...dives, ...offlineEntries]
+  }, [dives, offlineDives])
 
   const handleEditDive = async (dive: Omit<DiveEntry, 'id' | 'createdAt'>, diveId: string) => {
     await updateDive(diveId, dive)
@@ -246,7 +288,29 @@ export function DiveLog() {
   const selectedDive = selectedDiveId ? getDive(selectedDiveId) : null
 
   const filteredDives = useMemo(() => {
-    let result = [...dives]
+    // Combine online dives with pending offline dives
+    const offlineEntries: DiveEntry[] = offlineDives.map(d => ({
+      id: d.tempId,
+      siteName: d.siteName,
+      date: d.date,
+      location: d.location,
+      country: d.country,
+      maxDepth: d.maxDepth,
+      duration: d.duration,
+      waterTemp: d.waterTemp,
+      buddyName: d.buddyName,
+      marineLife: d.marineLife,
+      notes: d.notes,
+      photos: d.photos,
+      tags: d.tags || [],
+      createdAt: d.createdAt,
+      activityType: d.activityType,
+      latitude: d.latitude,
+      longitude: d.longitude,
+    }))
+    const allDives = [...dives, ...offlineEntries]
+    
+    let result = [...allDives]
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
@@ -505,6 +569,24 @@ export function DiveLog() {
                 className="hidden"
               />
             </label>
+            {/* Offline Indicator & Sync Button */}
+            {!isOnline && (
+              <Badge variant="destructive" className="text-xs">
+                Offline
+              </Badge>
+            )}
+            {hasPendingDives && isOnline && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => syncOfflineDives(addDive as (dive: Omit<DiveEntry, 'id' | 'createdAt'>) => Promise<DiveEntry>)}
+                disabled={isSyncing}
+                className="text-xs h-8"
+              >
+                {isSyncing ? <Loader2 className="size-3 mr-1 animate-spin" /> : <Check className="size-3 mr-1" />}
+                Sync ({offlineDives.length})
+              </Button>
+            )}
           </div>
         </header>
 
@@ -918,6 +1000,7 @@ export function DiveLog() {
                                 dive={dive}
                                 onClick={() => handleViewDive(dive.id)}
                                 diveNumber={divesWithNumbers[dive.id]}
+                                isPending={dive.id.startsWith('temp_')}
                               />
                             </div>
                           </div>
@@ -967,6 +1050,7 @@ export function DiveLog() {
                         dive={dive}
                         onClick={() => handleViewDive(dive.id)}
                         diveNumber={divesWithNumbers[dive.id]}
+                        isPending={dive.id.startsWith('temp_')}
                       />
                     </div>
                   </div>
