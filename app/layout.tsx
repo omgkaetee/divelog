@@ -3,6 +3,7 @@ import { DM_Sans, Playfair_Display } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ConvexClientProvider } from '@/components/providers'
 import { ServiceWorkerRegistration } from '@/components/service-worker-registration'
+import { PwaInstallButton } from '@/components/pwa-install-button'
 import './globals.css'
 
 const dmSans = DM_Sans({
@@ -65,6 +66,7 @@ export default function RootLayout({
         </ConvexClientProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
         <ServiceWorkerRegistration />
+        <PwaInstallButton />
       </body>
     </html>
   )
